@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f1115">
+  <title>Brass Studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Brass Studio</h1>
+    <span>Ver.1.0</span>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>音源</h2>
+
+      <div class="tabs">
+        <button id="fileTab" class="active" type="button">ファイル</button>
+        <button id="urlTab" type="button">URL</button>
+      </div>
+
+      <div id="filePanel">
+        <input id="audioFile" type="file" accept=".mp3,.wav,.m4a,audio/*">
+        <p id="fileName" class="note">MP3・WAV・M4A / 200MB以下</p>
+        <audio id="audioPlayer" controls hidden></audio>
+      </div>
+
+      <div id="urlPanel" hidden>
+        <input id="sourceUrl" type="url" inputmode="url" placeholder="YouTube / Apple Music URL">
+        <p class="note">URLは将来のサーバー連携用です。現在はスコアの土台を作成します。</p>
+      </div>
+
+      <p id="sourceError" class="error"></p>
+    </section>
+
+    <section id="audioInfoCard" class="card" hidden>
+      <h2>音源情報</h2>
+      <div class="stats">
+        <div><span>時間</span><strong id="duration">--:--</strong></div>
+        <div><span>サンプルレート</span><strong id="sampleRate">-</strong></div>
+        <div><span>チャンネル</span><strong id="channels">-</strong></div>
+        <div><span>容量</span><strong id="fileSize">-</strong></div>
+      </div>
+      <canvas id="waveform" height="120"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row-head">
+        <h2>編成</h2>
+        <div>
+          <button id="allParts" class="small" type="button">全選択</button>
+          <button id="noParts" class="small" type="button">解除</button>
+        </div>
+      </div>
+
+      <div class="parts">
+        <label><input type="checkbox" name="part" value="trumpet" checked>Trumpet</label>
+        <label><input type="checkbox" name="part" value="trombone" checked>Trombone</label>
+        <label><input type="checkbox" name="part" value="tenor-sax" checked>Tenor Sax</label>
+        <label><input type="checkbox" name="part" value="tuba" checked>Tuba</label>
+        <label><input type="checkbox" name="part" value="snare-drum" checked>Snare Drum</label>
+        <label><input type="checkbox" name="part" value="bass-drum" checked>Bass Drum</label>
+      </div>
+
+      <p id="partsError" class="error"></p>
+    </section>
+
+    <section class="card">
+      <h2>設定</h2>
+
+      <label class="field">
+        <span>曲名</span>
+        <input id="songTitle" type="text" maxlength="100" placeholder="ファイル名から自動入力">
+      </label>
+
+      <label class="field">
+        <span>テンポ</span>
+        <select id="tempoMode">
+          <option value="auto">自動解析</option>
+          <option value="manual">手動</option>
+        </select>
+      </label>
+
+      <label id="manualTempoField" class="field" hidden>
+        <span>BPM</span>
+        <input id="manualTempo" type="number" inputmode="numeric" min="40" max="240" value="120">
+      </label>
+
+      <label class="field">
+        <span>拍子</span>
+        <select id="timeSignature">
+          <option value="auto">自動</option>
+          <option value="4/4">4/4</option>
+          <option value="2/4">2/4</option>
+          <option value="3/4">3/4</option>
+          <option value="6/8">6/8</option>
+        </select>
+      </label>
+    </section>
+
+    <button id="analyzeButton" class="primary" type="button" disabled>解析する</button>
+
+    <section id="progressCard" class="card" hidden>
+      <div class="row-head">
+        <h2 id="progressText">解析中</h2>
+        <strong id="progressPercent">0%</strong>
+      </div>
+      <div class="progress"><i id="progressBar"></i></div>
+      <button id="cancelButton" class="secondary" type="button">中止</button>
+    </section>
+
+    <section id="resultCard" class="card" hidden>
+      <h2>解析結果</h2>
+      <div class="stats results">
+        <div><span>BPM</span><strong id="resultBpm">-</strong></div>
+        <div><span>Key</span><strong id="resultKey">-</strong></div>
+        <div><span>拍子</span><strong id="resultTime">-</strong></div>
+        <div><span>小節数</span><strong id="resultMeasures">-</strong></div>
+      </div>
+      <p id="confidence" class="note"></p>
+
+      <div class="exports">
+        <button id="musicXmlButton" class="primary" type="button">MusicXML</button>
+        <button id="pdfButton" class="secondary" type="button">PDF</button>
+      </div>
+      <button id="resetButton" class="secondary" type="button">新しい曲</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

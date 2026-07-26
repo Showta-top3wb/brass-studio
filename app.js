@@ -1,138 +1,125 @@
-"use strict";
+const API_BASE_URL = "https://brass-studio-api.onrender.com"; // 
 
-const API_BASE = "https://brass-studio-api.onrender.com";
-
-const apiStatus = document.getElementById("apiStatus");
-const audioFile = document.getElementById("audioFile");
-const fileName = document.getElementById("fileName");
+const fileInput = document.getElementById("audioFile");
 const uploadButton = document.getElementById("uploadButton");
+const fileNameDisplay = document.getElementById("fileName");
+const statusDisplay = document.getElementById("status");
+const resultDisplay = document.getElementById("result");
 
-const resultFilename = document.getElementById("resultFilename");
-const resultSize = document.getElementById("resultSize");
-const resultDuration = document.getElementById("resultDuration");
+uploadButton.disabled = true;
 
-const errorMessage = document.getElementById("errorMessage");
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
 
-let selectedFile = null;
-
-window.addEventListener("DOMContentLoaded", () => {
-    checkHealth();
-});
-
-audioFile.addEventListener("change", () => {
-
-    selectedFile = audioFile.files[0] ?? null;
-
-    if (selectedFile) {
-        fileName.textContent = selectedFile.name;
-        errorMessage.textContent = "なし";
-    } else {
-        fileName.textContent = "ファイル未選択";
-    }
-
-});
-
-uploadButton.addEventListener("click", uploadAudio);
-
-async function checkHealth() {
-
-    try {
-
-        const response = await fetch(`${API_BASE}/health`);
-
-        if (!response.ok) {
-            throw new Error();
-        }
-
-        const data = await response.json();
-
-        apiStatus.textContent =
-            `接続中 (API ${data.version})`;
-
-    } catch {
-
-        apiStatus.textContent = "接続失敗";
-
-    }
-
-}
-
-async function uploadAudio() {
-
-    if (!selectedFile) {
-
-        errorMessage.textContent =
-            "音源を選択してください。";
-
-        return;
-    }
-
+  if (!file) {
+    fileNameDisplay.textContent = "ファイルが選択されていません";
     uploadButton.disabled = true;
-    uploadButton.textContent = "アップロード中...";
+    resultDisplay.innerHTML = "";
+    return;
+  }
 
-    errorMessage.textContent = "";
+  const ext = file.name.split(".").pop().toLowerCase();
 
-    try {
+  if (!["mp3", "wav", "m4a"].includes(ext)) {
+    showStatus("MP3 / WAV / M4Aのみ対応しています。", true);
+    uploadButton.disabled = true;
+    return;
+  }
 
-        const formData = new FormData();
+  fileNameDisplay.textContent = file.name;
+  uploadButton.disabled = false;
+  showStatus("", false);
+  resultDisplay.innerHTML = "";
+});
 
-        formData.append(
-            "audio",
-            selectedFile
-        );
+uploadButton.addEventListener("click", uploadFile);
 
-        const response = await fetch(
-            `${API_BASE}/upload`,
-            {
-                method: "POST",
-                body: formData
-            }
-        );
+async function uploadFile() {
+  const file = fileInput.files[0];
 
-        const data = await response.json();
+  if (!file) {
+    showStatus("音声ファイルを選択してください。", true);
+    return;
+  }
 
-        if (!response.ok) {
+  uploadButton.disabled = true;
+  showStatus("アップロード中...", false);
 
-            throw new Error(
-                data.detail ??
-                "アップロードに失敗しました。"
-            );
+  const formData = new FormData();
+  formData.append("file", file);
 
-        }
+  try {
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: "POST",
+      body: formData
+    });
 
-        resultFilename.textContent =
-            data.filename;
+    const data = await response.json();
 
-        resultSize.textContent =
-            formatSize(data.size);
-
-        resultDuration.textContent =
-            `${Number(data.duration).toFixed(1)} 秒`;
-
-    } catch (error) {
-
-        errorMessage.textContent =
-            error.message;
-
-    } finally {
-
-        uploadButton.disabled = false;
-        uploadButton.textContent = "アップロード";
-
+    if (!response.ok) {
+      throw new Error(data.detail || "アップロードに失敗しました。");
     }
 
+    showStatus("解析完了", false);
+
+    resultDisplay.innerHTML = `
+      <div class="card">
+        <h3>解析結果</h3>
+        <p><strong>ファイル名：</strong>${escapeHtml(data.filename)}</p>
+        <p><strong>形式：</strong>${escapeHtml(data.format.toUpperCase())}</p>
+        <p><strong>長さ：</strong>${formatTime(data.duration)}</p>
+      </div>
+    `;
+
+  } catch (err) {
+    showStatus(err.message, true);
+  } finally {
+    uploadButton.disabled = false;
+  }
 }
 
-function formatSize(bytes) {
+async function healthCheck() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`);
 
-    if (bytes < 1024) {
-        return `${bytes} B`;
+    if (!res.ok) throw new Error();
+
+    const data = await res.json();
+
+    if (data.status === "ok") {
+      showStatus("サーバー接続OK", false);
     }
-
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-
-    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-
+  } catch {
+    showStatus("サーバーに接続できません", true);
+  }
 }
+
+function formatTime(sec) {
+  sec = Math.round(sec);
+
+  const min = Math.floor(sec / 60);
+  const s = sec % 60;
+
+  return `${min}:${String(s).padStart(2, "0")}`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showStatus(message, error) {
+  statusDisplay.textContent = message;
+
+  if (error) {
+    statusDisplay.style.color = "#e53935";
+  } else {
+    statusDisplay.style.color = "#2e7d32";
+  }
+}
+
+healthCheck();

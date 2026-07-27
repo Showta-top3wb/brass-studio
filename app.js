@@ -1,49 +1,54 @@
 const API_BASE_URL = "https://brass-studio-server.onrender.com";
 
+const apiStatus = document.getElementById("apiStatus");
 const fileInput = document.getElementById("audioFile");
-const uploadButton = document.getElementById("uploadButton");
 const fileNameDisplay = document.getElementById("fileName");
-const statusDisplay = document.getElementById("status");
-const resultDisplay = document.getElementById("result");
+const uploadButton = document.getElementById("uploadButton");
+const resultFilename = document.getElementById("resultFilename");
+const resultSize = document.getElementById("resultSize");
+const resultDuration = document.getElementById("resultDuration");
+const errorMessage = document.getElementById("errorMessage");
 
 uploadButton.disabled = true;
 
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
 
+  clearResult();
+  clearError();
+
   if (!file) {
-    fileNameDisplay.textContent = "ファイルが選択されていません";
+    fileNameDisplay.textContent = "ファイル未選択";
     uploadButton.disabled = true;
-    resultDisplay.innerHTML = "";
     return;
   }
 
-  const ext = file.name.split(".").pop().toLowerCase();
+  const extension = file.name.split(".").pop().toLowerCase();
 
-  if (!["mp3", "wav", "m4a"].includes(ext)) {
-    showStatus("MP3 / WAV / M4Aのみ対応しています。", true);
+  if (!["mp3", "wav", "m4a"].includes(extension)) {
+    fileNameDisplay.textContent = file.name;
     uploadButton.disabled = true;
+    showError("MP3、WAV、M4Aファイルのみ対応しています。");
     return;
   }
 
   fileNameDisplay.textContent = file.name;
   uploadButton.disabled = false;
-  showStatus("", false);
-  resultDisplay.innerHTML = "";
 });
 
-uploadButton.addEventListener("click", uploadFile);
-
-async function uploadFile() {
+uploadButton.addEventListener("click", async () => {
   const file = fileInput.files[0];
 
   if (!file) {
-    showStatus("音声ファイルを選択してください。", true);
+    showError("音声ファイルを選択してください。");
     return;
   }
 
+  clearResult();
+  clearError();
+
   uploadButton.disabled = true;
-  showStatus("アップロード中...", false);
+  uploadButton.textContent = "アップロード中…";
 
   const formData = new FormData();
   formData.append("file", file);
@@ -60,66 +65,83 @@ async function uploadFile() {
       throw new Error(data.detail || "アップロードに失敗しました。");
     }
 
-    showStatus("解析完了", false);
-
-    resultDisplay.innerHTML = `
-      <div class="card">
-        <h3>解析結果</h3>
-        <p><strong>ファイル名：</strong>${escapeHtml(data.filename)}</p>
-        <p><strong>形式：</strong>${escapeHtml(data.format.toUpperCase())}</p>
-        <p><strong>長さ：</strong>${formatTime(data.duration)}</p>
-      </div>
-    `;
-
-  } catch (err) {
-    showStatus(err.message, true);
+    resultFilename.textContent = data.filename || file.name;
+    resultSize.textContent = formatFileSize(file.size);
+    resultDuration.textContent = formatDuration(data.duration);
+  } catch (error) {
+    showError(
+      error instanceof Error
+        ? error.message
+        : "サーバーとの通信に失敗しました。"
+    );
   } finally {
     uploadButton.disabled = false;
+    uploadButton.textContent = "アップロード";
   }
-}
+});
 
-async function healthCheck() {
+async function checkApiStatus() {
+  apiStatus.textContent = "確認中…";
+
   try {
-    const res = await fetch(`${API_BASE_URL}/health`);
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      cache: "no-store"
+    });
 
-    if (!res.ok) throw new Error();
-
-    const data = await res.json();
-
-    if (data.status === "ok") {
-      showStatus("サーバー接続OK", false);
+    if (!response.ok) {
+      throw new Error();
     }
+
+    const data = await response.json();
+
+    if (data.status !== "ok") {
+      throw new Error();
+    }
+
+    apiStatus.textContent = "接続済み";
   } catch {
-    showStatus("サーバーに接続できません", true);
+    apiStatus.textContent = "接続できません";
+    showError("APIサーバーに接続できませんでした。");
   }
 }
 
-function formatTime(sec) {
-  sec = Math.round(sec);
+function formatDuration(seconds) {
+  const totalSeconds = Math.round(Number(seconds));
 
-  const min = Math.floor(sec / 60);
-  const s = sec % 60;
-
-  return `${min}:${String(s).padStart(2, "0")}`;
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function showStatus(message, error) {
-  statusDisplay.textContent = message;
-
-  if (error) {
-    statusDisplay.style.color = "#e53935";
-  } else {
-    statusDisplay.style.color = "#2e7d32";
+  if (!Number.isFinite(totalSeconds)) {
+    return "-";
   }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
-healthCheck();
+function formatFileSize(bytes) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function clearResult() {
+  resultFilename.textContent = "-";
+  resultSize.textContent = "-";
+  resultDuration.textContent = "-";
+}
+
+function clearError() {
+  errorMessage.textContent = "なし";
+}
+
+function showError(message) {
+  errorMessage.textContent = message;
+}
+
+checkApiStatus();

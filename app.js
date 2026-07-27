@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://brass-studio-api.onrender.com"; // 
+const API_BASE_URL = "https://brass-studio-server.onrender.com";
 
 const fileInput = document.getElementById("audioFile");
 const uploadButton = document.getElementById("uploadButton");
